@@ -4,10 +4,8 @@ import { autoUpdater } from "electron-updater";
 
  
 // import { createRequire } from 'node:module'
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import * as path from "node:path";
 
-// const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The built directory structure
@@ -22,19 +20,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
-  ? path.join(process.env.APP_ROOT, "public")
-  : RENDERER_DIST;
-
 let mainWindow: BrowserWindow | null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, "icon.png"),
+    icon: path.join(process.env.APP_ROOT, "public", "icon.png"),
     title: "Fanap Med Windows Application",
     width: 1500,
     height: 800,
@@ -42,92 +32,78 @@ function createWindow() {
     minWidth: 700,
     titleBarStyle: "hidden",
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "preload.js"),
       webviewTag: true,
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
-      // allowDisplayingInsecureContent: true,
-      // allowRunningInsecureContent: true,
     },
   });
 
   mainWindow.setMenu(null);
-//  mainWindow.webContents.openDevTools();
-
-
   
-ipcMain.on('show-webview-context-menu', (event, params) => {
-  const template = [
-    {
-      label: 'هوش مصنوعی',
-      click: () => {
-        mainWindow?.webContents.send("ai-context-menu-selecttext", {
-          selectionText: params.selectionText
-        });
-      }
-    },
-    { type: 'separator' },
-    ...((params.hasText||params.isEditable) ? [
+  ipcMain.on('show-webview-context-menu', (event, params) => {
+    const template: any = [
       {
-        label: 'رونوشت',
-        role: 'copy',
-      },
-      {
-        label: 'بریدن',
-        role: 'cut',
-      },
-      {
-        label: 'جایگذاری',
-        role: 'paste',
+        label: 'هوش مصنوعی',
+        click: () => {
+          mainWindow?.webContents.send("ai-context-menu-selecttext", {
+            selectionText: params.selectionText
+          });
+        }
       },
       { type: 'separator' },
-    ] : []),
-    {
-      label: 'بازگشت به صفحه قبل',
-      enabled: params.canGoBack,
-      click: () => {
-        event.sender.goBack();
-      }
-    },
-    {
-      label: 'رفتن به صفحه بعد',
-      enabled: params.canGoForward,
-      click: () => {
-        event.sender.goForward();
-      }
-    },
-    {
-      label: 'بازگذاری صفحه',
-      click: () => {
-        event.sender.reload();
-      }
-    },
-    // {
-    //   label: 'پرینت',
-    //   click: () => {
-    //     event.sender.print();
-    //   }
-    // },
-    { type: 'separator' },
-    {
-      label: 'بررسی کد صفحه',
-      click: () => {
-        // دریافت webContents مربوط به webview
-        const guestWebContents = webContents.fromId(params.webContentsId);
-        guestWebContents.inspectElement(params.x, params.y);
-
-        // فوکوس روی DevTools
-        if (guestWebContents.isDevToolsOpened()) {
-          guestWebContents.devToolsWebContents.focus();
+      ...((params.hasText||params.isEditable) ? [
+        {
+          label: 'رونوشت',
+          role: 'copy',
+        },
+        {
+          label: 'بریدن',
+          role: 'cut',
+        },
+        {
+          label: 'جایگذاری',
+          role: 'paste',
+        },
+        { type: 'separator' },
+      ] : []),
+      {
+        label: 'بازگشت به صفحه قبل',
+        enabled: params.canGoBack,
+        click: () => {
+          event.sender.goBack();
         }
-      }
-    },
-  ];
+      },
+      {
+        label: 'رفتن به صفحه بعد',
+        enabled: params.canGoForward,
+        click: () => {
+          event.sender.goForward();
+        }
+      },
+      {
+        label: 'بازگذاری صفحه',
+        click: () => {
+          event.sender.reload();
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'بررسی کد صفحه',
+        click: () => {
+          const guestWebContents = webContents.fromId(params.webContentsId);
+          guestWebContents.inspectElement(params.x, params.y);
 
-  const menu = Menu.buildFromTemplate(template);
-  menu.popup({ window: event.sender.getOwnerBrowserWindow() });
-});
+          if (guestWebContents.isDevToolsOpened()) {
+            (guestWebContents as any).devToolsWebContents.focus();
+          }
+        }
+      },
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    menu.popup({ window: (event.sender as any).getOwnerBrowserWindow() });
+  });
 
 
   ipcMain.on("toggle-fullscreen", () => {
@@ -205,11 +181,11 @@ ipcMain.on('show-webview-context-menu', (event, params) => {
   //   return { action: "allow" };
   // });
 
-  if (VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL);
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:3000');
+    mainWindow.webContents.openDevTools();
   } else {
-    // mainWindow.loadFile('dist/index.html')
-    mainWindow.loadFile(path.join(RENDERER_DIST, "index.html"));
+    mainWindow.loadFile(path.join(__dirname, '..', 'out', 'index.html'));
   }
 
   // Set the feed URL for updates
