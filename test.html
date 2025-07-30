@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>test</title>
+  </head>
+  <body>
+    <h1 onclick="handleFormSubmit()">test page</h1>
+  </body>
+
+  <script>
+    // window.parent.postMessage(
+    //   {
+    //     token: "hello",
+    //     action: "loginSuccess",
+    //     orgin: "mizBunny",
+    //   },
+    //   "*"
+    // );
+
+    window.addEventListener("message", (event) => {
+      // Access the data sent from Mizbunny
+      const { token, username } = event.data;
+      console.log("Data from Mizbunny:", token, username);
+      alert(`${token}\n${username}`);
+      // Perform any necessary actions with the data
+    });
+
+    const handleFormSubmit = () => {
+      window.ipcRenderer.sendToMain("message from child");
+    };
+
+
+    
+  </script>
+</html>

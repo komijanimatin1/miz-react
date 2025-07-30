@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://fanap.mizbunny.com/sysBunny.js"></script>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
+      rel="stylesheet"
+    />
+    <title>میزبانی</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+
+    <script>
+
+
+
+      window.ipcRenderer.aiContextMenuSelectText(async (data) => {
+        launchAIPrompt(2,data);
+      });
+
+      let aiData = null;
+      let aiType = 0;
+      function launchAIPrompt(type, data) {
+        window.launchAI();
+        //document.getElementsByClassName("aiPopUpBTN")[0].click();
+        aiType = type;
+        aiData = data;
+      }
+
+      function compressHTML(html) {
+        // ساخت یک DOM موقت برای بررسی نودها
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+
+        // تابعی برای حذف نودهای خالی یا غیرمفید
+        function removeEmptyNodes(node) {
+          // اگر نود عنصر باشد
+          if (node.nodeType === 1) {
+            // حذف نودهای غیرمتنی و غیر اطلاعاتی (مثل <div> خالی یا <span> خالی)
+            const hasUsefulContent = Array.from(node.childNodes).some(
+              (child) => {
+                // بررسی اینکه آیا فرزند شامل متن، تصویر، یا اینپوت است
+                return (
+                  child.nodeType === 3 || // متن خالص
+                  child.nodeName === "IMG" ||
+                  child.nodeName === "INPUT" ||
+                  child.nodeName === "TEXTAREA" ||
+                  child.nodeName === "SELECT" ||
+                  child.nodeName === "BUTTON"
+                );
+              }
+            );
+
+            if (!hasUsefulContent) {
+              node.remove(); // حذف نود
+            } else {
+              // بررسی بچه‌های نود به صورت بازگشتی
+              Array.from(node.childNodes).forEach(removeEmptyNodes);
+            }
+          }
+        }
+
+        // حذف نودهای خالی از DOM
+        Array.from(tempDiv.childNodes).forEach(removeEmptyNodes);
+
+        // تبدیل مجدد DOM به HTML
+        return (
+          tempDiv.innerHTML
+            // حذف فضای اضافی
+            .replace(/\s+/g, " ")
+            // حذف کامنت‌ها
+            .replace(/<!--[\s\S]*?-->/g, "")
+            // حذف فاصله‌ها بین تگ‌های بسته‌شونده و بازشونده
+            .replace(/>[\s]+</g, "><")
+            // حذف تگ‌های <style> و محتوای آن‌ها
+            .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+            // حذف تگ‌های <script> و محتوای آن‌ها
+            .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+            // حذف تگ‌های <svg> و محتوای آن‌ها
+            .replace(/<svg[\s\S]*?>[\s\S]*?<\/svg>/gi, "")
+            // حذف تگ‌های <link> (مثلاً برای CSS)
+            .replace(/<link[\s\S]*?>/gi, "")
+            // حذف تگ‌های <meta>
+            .replace(/<meta[\s\S]*?>/gi, "")
+            .trim()
+        );
+      }
+
+      async function onclick_submitBtn() {
+        try {
+          const openModalBtn = document.getElementById("openModalBtn");
+          const modal = document.getElementById("modal");
+          const cancelBtn = document.getElementById("cancelBtn");
+          const submitBtn = document.getElementById("submitBtn");
+          const inputField = document.getElementById("inputField");
+          let isHR = false;
+          const userInput = inputField.value;
+          let currentWebview = null;
+          try {
+            currentWebview = document
+              .getElementsByClassName("webview-container")[0]
+              .getElementsByClassName("visible")[0]
+              .getElementsByClassName("isCurrent")[0];
+            aiData = currentWebview.src;
+          } catch (error) {
+            isHR = true;
+          }
+
+          if (isHR) {
+            debugger;
+            document.getElementById("isNotLoading").classList.add("hidden");
+            document.getElementById("isLoading").classList.remove("hidden");
+
+            debugger;
+            const response = await fetch(
+              "https://www.mizbunny.com/assistance.php",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Client-Token": "client_random_token",
+                },
+                body: JSON.stringify({ content: userInput }),
+              }
+            );
+            debugger;
+            const data = await response.json();
+            const content = data.response;
+            console.info(content);
+            aiAlert(content);
+
+            document.getElementById("isLoading").classList.add("hidden");
+            document.getElementById("isNotLoading").classList.remove("hidden");
+            modal.classList.add("hidden");
+          } else if (
+            aiData
+              .toLowerCase()
+              .includes("https://e.fanap.ir/letter/letter/send/type/internal")
+          ) {
+            console.log("موضوع نامه:", userInput);
+            debugger;
+            document.getElementById("isNotLoading").classList.add("hidden");
+            document.getElementById("isLoading").classList.remove("hidden");
+            const response = await fetch("https://mizbunny.com/gptapi.php", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Client-Token": "client_random_token",
+              },
+              body: JSON.stringify({
+                messages: [
+                  {
+                    role: "system",
+                    content: `شما یک مدل هوش مصنوعی هستید که نامه‌های اداری رسمی به زبان فارسی برای استفاده در ایران تولید می‌کنید. نامه‌ها باید دارای ساختار زیر باشند:
+              - شروع نامه با مقدمه‌ای رسمی
+              - بدنه اصلی شامل توضیح مختصر از موضوع یا درخواست
+              - نتیجه‌گیری با یک تشکر محترمانه
+              - در تمام موارد از تاریخ‌های هجری شمسی استفاده کنید، مگر اینکه کاربر صریحاً درخواست تاریخ میلادی کند
+              - اگر موضوع نامه به زبان انگلیسی باشد، تاریخ‌ها میلادی و به فرمت مناسب انگلیسی ارائه شوند
+              - لحن نامه باید رسمی و محترمانه باشد
+              - نامه باید در قالب HTML و به صورت یک خط تولید شود، و از نیم‌فاصله‌ها (‌) به درستی استفاده شود
+              - خط بعدی در HTML باید با تگ <br> نمایش داده شود
+              - اگر موضوع شامل محتوای غیرقانونی یا حساس باشد، اعلام کنید که نمی‌توانید نامه را بنویسید`,
+                  },
+                  {
+                    role: "user",
+                    content: `لطفاً یک نامه اداری برای موضوع "${userInput}" بنویسید.`,
+                  },
+                ],
+              }),
+            });
+            const data = await response.json();
+            const letterDraft = data.choices[0].message.content;
+            let temp = `CKEDITOR.instances["body"].setData(${JSON.stringify(
+              letterDraft
+            )});`;
+            //webview_component.value.executeJavaScript(temp, false);
+            currentWebview.executeJavaScript(temp, false);
+            webview_component.value.executeJavaScript(
+              `CKEDITOR.instances["body"].setData("${userInput}");`,
+              false
+            );
+            document.getElementById("isLoading").classList.add("hidden");
+            document.getElementById("isNotLoading").classList.remove("hidden");
+            modal.classList.add("hidden");
+          } else {
+            document.getElementById("isNotLoading").classList.add("hidden");
+            document.getElementById("isLoading").classList.remove("hidden");
+            let html = await currentWebview.executeJavaScript(
+              "document.body.outerHTML"
+            );
+
+            let compressedHTML = compressHTML(html);
+            const htmlParts = compressedHTML.match(/.{1,3000}/g); // تقسیم HTML به بخش‌های کوچک 3000 کاراکتری
+            let messages = [
+              {
+                role: "system",
+                content:
+                  "شما یک مدل هوش مصنوعی هستید که وظیفه تحلیل و پردازش صفحات HTML را دارید. شما باید ابتدا HTML داده شده را به دقت بررسی کنید، ساختار آن را تحلیل کنید و سپس بر اساس ورودی کاربر، درخواست او را به بهترین شکل و با رعایت اصول حرفه‌ای و رسمی انجام دهید. وظایف شما شامل موارد زیر است: 1) تحلیل دقیق ساختار HTML، شناسایی عناصر مهم مانند عناوین، پاراگراف‌ها، و متا دیتاها؛ 2) اجرای درخواست کاربر به صورت دقیق و رسمی، به‌طوری‌که نتایج برای استفاده در محیط‌های سازمانی قابل قبول باشند؛ 3) توجه به زبان رسمی و دقیق در تمامی بخش‌های پاسخ‌دهی.",
+              },
+            ];
+            for (let j = 0; j < htmlParts.length; j++) {
+              const part = htmlParts[j];
+              messages.push({
+                role: "system",
+                content: "HTML part " + (j + 1) + " : \n" + part,
+              });
+            }
+            messages.push({
+              role: "user",
+              content: userInput,
+            });
+            debugger;
+            if (false) {
+              aiAlert(messages.length);
+            } else {
+              const response = await fetch(
+                "https://mizbunny.com/gptlongapi.php",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Client-Token": "client_random_token",
+                  },
+                  body: JSON.stringify({ messages: messages }),
+                }
+              );
+              debugger;
+              const data = await response.json();
+              const content = data.choices[0].message.content;
+              console.info(content);
+              aiAlert(content);
+            }
+
+            document.getElementById("isLoading").classList.add("hidden");
+            document.getElementById("isNotLoading").classList.remove("hidden");
+            modal.classList.add("hidden");
+          }
+        } catch (error) {
+          debugger;
+          console.error(error);
+          document.getElementById("isLoading").classList.add("hidden");
+          document.getElementById("isNotLoading").classList.remove("hidden");
+          modal.classList.add("hidden");
+        }
+      }
+
+      function onclick_cancelBtn() {
+        const modal = document.getElementById("modal");
+        modal.classList.add("hidden");
+      }
+
+      function aiAlert(message) {
+        // نمایش مدال
+        const modal = document.getElementById("aiAlertModal");
+        const messageElement = document.getElementById("aiAlertMessage");
+        modal.classList.remove("hidden");
+        messageElement.textContent = message;
+
+        // تابع کپی کردن متن
+        const copyBtn = document.getElementById("copyBtn");
+        copyBtn.onclick = function () {
+          navigator.clipboard.writeText(message).then(
+            function () {
+              modal.classList.add("hidden"); // بستن مدال
+            },
+            function () {}
+          );
+        };
+      }
+    </script>
+  </body>
+</html>
