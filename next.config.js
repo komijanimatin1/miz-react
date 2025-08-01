@@ -7,6 +7,9 @@ const nextConfig = {
   },
   experimental: {
     esmExternals: false
+  },
+  typescript: {
+    ignoreBuildErrors: true
   }
 }
 

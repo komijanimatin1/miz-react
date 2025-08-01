@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session , dialog ,Menu ,webContents } from "electron";
 import { autoUpdater } from "electron-updater";
+import { fileURLToPath } from "node:url";
 // import dns from 'dns';
 
  
@@ -92,10 +93,12 @@ function createWindow() {
         label: 'بررسی کد صفحه',
         click: () => {
           const guestWebContents = webContents.fromId(params.webContentsId);
+          if (guestWebContents) {
           guestWebContents.inspectElement(params.x, params.y);
 
           if (guestWebContents.isDevToolsOpened()) {
             (guestWebContents as any).devToolsWebContents.focus();
+            }
           }
         }
       },
